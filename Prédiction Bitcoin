@@ -1,0 +1,70 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+from sklearn.preprocessing import MinMaxScaler
+
+from keras.layers.core import Dense, Activation, Dropout
+from keras.layers.recurrent import LSTM
+from keras.models import Sequential
+
+data = pd.read_csv(r'C:\Users\Marc-André Bergeron\Desktop\bitcoin.csv')
+data = data[['Open', 'High', 'Low', 'Volume', 'Close']]
+print(data.head())
+real_min = min(data['Close'])
+real_max = max(data['Close'])
+print(real_min)
+print(real_max)
+
+preprocessor = MinMaxScaler().fit(data)
+data = preprocessor.transform(data)
+print(data)
+print(len(data))
+
+sequence_length = 10
+data_processed = []
+for index in range(len(data) - sequence_length):
+    data_processed.append(data[index : 
+    index + sequence_length])
+data_processed = np.array(data_processed)
+
+data_processed.shape
+
+val_split = round(0.9 * data_processed.shape[0])
+train = data_processed[: int(val_split), :]
+val = data_processed[int(val_split) :, :]
+
+print('Training data: {}'.format(train.shape))
+print('Validation data: {}'.format(val.shape))
+
+X_train = train[:, : -1]
+y_train = train[:, -1][: ,-1]
+X_val = val[:, : -1]
+y_val = val[:, -1][ : ,-1]
+
+print(X_train.shape)
+print(X_val.shape)
+print(X_train)
+
+model = Sequential()
+model.add(LSTM(input_shape=(X_train.shape[1:]), units = 128, return_sequences=True))
+model.add(Dropout(0.5))
+model.add(LSTM(128, return_sequences=False))
+model.add(Dropout(0.25))
+model.add(Dense(units=1))
+model.add(Activation("linear"))
+
+model.compile(loss="mse", optimizer="adam")
+model.summary()
+
+history = model.fit(X_train, y_train,batch_size=512,epochs=300,
+    verbose=1)
+preds_val = model.predict(X_val)
+
+preds_real = preds_val * (real_max - real_min) + real_min
+y_val_real = y_val *(real_max - real_min) + real_min
+plt.plot(preds_real, label='Predictions')
+plt.plot(y_val_real, label='Actual values')
+plt.xlabel('test')
+plt.legend(loc=0)
+plt.show()
